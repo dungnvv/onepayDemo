@@ -1,21 +1,34 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:onepaydemo/create_url_paymemt.dart';
 import 'package:onepaydemo/return_screen.dart';
 
 class ViewScreen extends StatefulWidget {
-  const ViewScreen({required this.url, Key? key}) : super(key: key);
-  final String url;
+  const ViewScreen(
+      {
+      // required this.url,
+      Key? key})
+      : super(key: key);
+  // final String url;
   @override
   State<ViewScreen> createState() => _ViewScreenState();
 }
 
 class _ViewScreenState extends State<ViewScreen> {
   double _progress = 0;
-
+  String _urlpaymet = '';
   String returnUrl = '';
   late InAppWebViewController webViewController;
 
   GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+  @override
+  void initState() {
+    _urlpaymet = makeUrl();
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,8 +43,7 @@ class _ViewScreenState extends State<ViewScreen> {
         children: [
           InAppWebView(
             initialUrlRequest: URLRequest(
-              url: Uri.parse(
-                  'https://mtf.onepay.vn/onecomm-pay/vpc.op?Title=VPC+3-Party&vpc_AccessCode=D67342C2&vpc_Amount=100&vpc_Command=pay&vpc_Currency=VND&vpc_Customer_Email=support%40onepay.vn&vpc_Customer_Id=thanhvt&vpc_Customer_Phone=840904280949&vpc_Locale=vn&vpc_MerchTxnRef=202207211044141795171067&vpc_Merchant=ONEPAY&vpc_OrderInfo=JSECURETEST01&vpc_ReturnURL=https%3A%2F%2Freturnonepay.herokuapp.com%2F&vpc_SHIP_City=Ha+Noi&vpc_SHIP_Country=Viet+Nam&vpc_SHIP_Provice=Hoan+Kiem&vpc_SHIP_Street01=39A+Ngo+Quyen&vpc_TicketNo=%3A%3A1&vpc_Version=2&vpc_SecureHash=F13E1584227B3C68BE8F776E5B12696AF3C1F4A0C959FE44907F30577241A35D'),
+              url: Uri.parse(_urlpaymet),
             ),
             onWebViewCreated: (InAppWebViewController controller) {
               webViewController = controller;
@@ -76,5 +88,33 @@ class _ViewScreenState extends State<ViewScreen> {
         ],
       ),
     );
+  }
+
+  String makeUrl() {
+    final sortedParams = DataUrlPayment().sortParams(DataUrlPayment().params);
+    final hashDataBuffer = StringBuffer();
+    sortedParams.forEach((key, value) {
+      hashDataBuffer.write(key);
+      hashDataBuffer.write('=');
+      hashDataBuffer.write(value);
+      hashDataBuffer.write('&');
+    });
+    final hashData =
+        hashDataBuffer.toString().substring(0, hashDataBuffer.length - 1);
+    final query = Uri(queryParameters: sortedParams).query;
+    var key = utf8.encode(DataUrlPayment().secureSecret);
+    var hmacSha256 = Hmac(sha256, key);
+    var bytes = utf8.encode(hashData.toString());
+    dynamic vnpSecureHash = hmacSha256.convert(bytes).bytes;
+    String val = base64Encode(vnpSecureHash);
+    vnpSecureHash = val.toUpperCase();
+    final urlPayment = DataUrlPayment().virtualPaymentClientURL +
+        '?Title=' +
+        DataUrlPayment().title +
+        '&' +
+        query +
+        '&vpc_SecureHash=' +
+        vnpSecureHash;
+    return urlPayment;
   }
 }
