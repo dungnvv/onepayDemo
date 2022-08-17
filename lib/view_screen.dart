@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:math';
+
+import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -6,17 +9,14 @@ import 'package:onepaydemo/create_url_paymemt.dart';
 import 'package:onepaydemo/return_screen.dart';
 
 class ViewScreen extends StatefulWidget {
-  const ViewScreen(
-      {
-      // required this.url,
-      Key? key})
-      : super(key: key);
-  // final String url;
+  const ViewScreen({Key? key}) : super(key: key);
+
   @override
   State<ViewScreen> createState() => _ViewScreenState();
 }
 
 class _ViewScreenState extends State<ViewScreen> {
+  static const callBackUrl = 'https://returnonepay.herokuapp.com/';
   double _progress = 0;
   String _urlpaymet = '';
   String returnUrl = '';
@@ -33,12 +33,7 @@ class _ViewScreenState extends State<ViewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: scaffoldKey,
-      appBar: AppBar(
-        title: const Text('OnePay', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('OnePay')),
       body: Stack(
         children: [
           InAppWebView(
@@ -54,16 +49,20 @@ class _ViewScreenState extends State<ViewScreen> {
               });
             },
             onLoadStop: (InAppWebViewController controller, Uri? url) {
-              if ((url.toString())
-                  .startsWith('https://returnonepay.herokuapp.com/')) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ReturnScreen(),
-                  ),
-                  (route) => route.isFirst,
-                );
+              final isCallbackSuccessUrl =
+                  (url.toString()).startsWith(callBackUrl);
+
+              if (!isCallbackSuccessUrl) {
+                return;
               }
+
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ReturnScreen(),
+                ),
+                (route) => route.isFirst,
+              );
             },
             initialOptions: InAppWebViewGroupOptions(
               crossPlatform:
@@ -91,36 +90,48 @@ class _ViewScreenState extends State<ViewScreen> {
   }
 
   String makeUrl() {
-    final sortedParams = DataUrlPayment().sortParams(DataUrlPayment().params);
+    const _chars = '0123456789';
+    Random _rnd = Random();
+
+    String getRandomString(int length) =>
+        String.fromCharCodes(Iterable.generate(
+            length, (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length))));
+
+    final params = DataUrlPayment.params;
+    params['vpc_MerchTxnRef'] = getRandomString(24);
+    final sortedParams = DataUrlPayment().sortParams(params);
     final hashDataBuffer = StringBuffer();
+
     sortedParams.forEach((key, value) {
       hashDataBuffer.write(key);
       hashDataBuffer.write('=');
       hashDataBuffer.write(value);
       hashDataBuffer.write('&');
     });
+
     final hashData =
         hashDataBuffer.toString().substring(0, hashDataBuffer.length - 1);
     final query = Uri(queryParameters: sortedParams).query;
-    var key = utf8.encode(DataUrlPayment().secureSecret);
-    var hmacSha256 = Hmac(sha256, key);
-    var bytes = utf8.encode(hashData.toString());
-    dynamic vnpSecureHash = hmacSha256.convert(bytes).bytes;
-    String val = base64Encode(vnpSecureHash);
-    vnpSecureHash = val.toUpperCase();
-    final urlPayment = DataUrlPayment().virtualPaymentClientURL +
+    final vnpSecureHash = _createSecureHash(hashData);
+
+    final urlPayment = DataUrlPayment.virtualPaymentClientURL +
         '?Title=' +
-        DataUrlPayment().title +
+        DataUrlPayment.title +
         '&' +
         query +
         '&vpc_SecureHash=' +
         vnpSecureHash;
+
     return urlPayment;
   }
-  //Backup url payment:
-  //'https://mtf.onepay.vn/onecomm-pay/vpc.op?Title=VPC+3-Party&vpc_AccessCode=D67342C2&vpc_Amount=10000000&vpc_Command=pay&vpc_Currency=VND&vpc_Customer_Email=support%40onepay.vn&vpc_Customer_Id=thanhvt&vpc_Customer_Phone=840904280949&vpc_Locale=vn&vpc_MerchTxnRef=20220815153732950830333&vpc_Merchant=ONEPAY&vpc_OrderInfo=JSECURETEST01&vpc_ReturnURL=https%3A%2F%2Freturnonepay.herokuapp.com%2F&vpc_SHIP_City=Ha+Noi&vpc_SHIP_Country=Viet+Nam&vpc_SHIP_Provice=Hoan+Kiem&vpc_SHIP_Street01=39A+Ngo+Quyen&vpc_TicketNo=%3A%3A1&vpc_Version=2&vpc_SecureHash=996704C872B13A9A47369D81C3BA9E68D2C3C6F399C812E159190E0E60DD906A'
-  //'https://mtf.onepay.vn/onecomm-pay/vpc.op?Title=VPC+3-Party&vpc_AccessCode=D67342C2&vpc_Amount=100000000&vpc_Command=pay&vpc_Currency=VND&vpc_Customer_Email=support%40onepay.vn&vpc_Customer_Id=thanhvt&vpc_Customer_Phone=840904280949&vpc_Locale=vn&vpc_MerchTxnRef=20220815153732950830333&vpc_Merchant=ONEPAY&vpc_OrderInfo=JSECURETEST01&vpc_ReturnURL=https%3A%2F%2Freturnonepay.herokuapp.com%2F&vpc_SHIP_City=Ha+Noi&vpc_SHIP_Country=Viet+Nam&vpc_SHIP_Provice=Hoan+Kiem&vpc_SHIP_Street01=39A+Ngo+Quyen&vpc_TicketNo=%3A%3A1&vpc_Version=2&vpc_SecureHash=7818450616D42D2B11B20881A4D5A61946858ABB32A34C70405DB36FBCE3DA2E'
-  //'https://mtf.onepay.vn/onecomm-pay/vpc.op?Title=VPC+3-Party&vpc_AccessCode=D67342C2&vpc_Amount=10000000&vpc_Command=pay&vpc_Currency=VND&vpc_Customer_Email=support%40onepay.vn&vpc_Customer_Id=thanhvt&vpc_Customer_Phone=840904280949&vpc_Locale=vn&vpc_MerchTxnRef=202208151538591011333303&vpc_Merchant=ONEPAY&vpc_OrderInfo=JSECURETEST01&vpc_ReturnURL=https%3A%2F%2Freturnonepay.herokuapp.com%2F&vpc_SHIP_City=Ha+Noi&vpc_SHIP_Country=Viet+Nam&vpc_SHIP_Provice=Hoan+Kiem&vpc_SHIP_Street01=39A+Ngo+Quyen&vpc_TicketNo=%3A%3A1&vpc_Version=2&vpc_SecureHash=DA6D730429A5D9394E89A2664E510D7B4E1B748BCF0E631DBAD71F51C843FBCC'
-  //'https://mtf.onepay.vn/onecomm-pay/vpc.op?Title=VPC+3-Party&vpc_AccessCode=D67342C2&vpc_Amount=10000000&vpc_Command=pay&vpc_Currency=VND&vpc_Customer_Email=support%40onepay.vn&vpc_Customer_Id=thanhvt&vpc_Customer_Phone=840904280949&vpc_Locale=vn&vpc_MerchTxnRef=202208151539481828025037&vpc_Merchant=ONEPAY&vpc_OrderInfo=JSECURETEST01&vpc_ReturnURL=https%3A%2F%2Freturnonepay.herokuapp.com%2F&vpc_SHIP_City=Ha+Noi&vpc_SHIP_Country=Viet+Nam&vpc_SHIP_Provice=Hoan+Kiem&vpc_SHIP_Street01=39A+Ngo+Quyen&vpc_TicketNo=%3A%3A1&vpc_Version=2&vpc_SecureHash=19FEB2B779CBDFD18E05697027D106836D49D7291A34383F446077566860E2EA'
-  //'https://mtf.onepay.vn/onecomm-pay/vpc.op?Title=VPC+3-Party&vpc_AccessCode=D67342C2&vpc_Amount=10000000&vpc_Command=pay&vpc_Currency=VND&vpc_Customer_Email=support%40onepay.vn&vpc_Customer_Id=thanhvt&vpc_Customer_Phone=840904280949&vpc_Locale=vn&vpc_MerchTxnRef=202208151540251829188109&vpc_Merchant=ONEPAY&vpc_OrderInfo=JSECURETEST01&vpc_ReturnURL=https%3A%2F%2Freturnonepay.herokuapp.com%2F&vpc_SHIP_City=Ha+Noi&vpc_SHIP_Country=Viet+Nam&vpc_SHIP_Provice=Hoan+Kiem&vpc_SHIP_Street01=39A+Ngo+Quyen&vpc_TicketNo=%3A%3A1&vpc_Version=2&vpc_SecureHash=F04C85225BCB6B01F278C178CAB177859E0D0304EA0EDEBEE2C4D211C4D46FC6'
+
+  String _createSecureHash(String message) {
+    final List<int> messageBytes = utf8.encode(message);
+    final hexKey = hex.decode(DataUrlPayment.secureSecret);
+    final Hmac hmac = Hmac(sha256, hexKey);
+    final Digest digest = hmac.convert(messageBytes);
+    final String hexHash = hex.encode(digest.bytes);
+
+    return hexHash.toUpperCase();
+  }
 }

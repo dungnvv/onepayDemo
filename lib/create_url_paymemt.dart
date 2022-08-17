@@ -1,12 +1,14 @@
 class DataUrlPayment {
-  String secureSecret = "A3EFDFABA8653DF2342E8DAC29B51AF0";
-  String virtualPaymentClientURL = 'https://mtf.onepay.vn/onecomm-pay/vpc.op';
-  String? paymentUrl;
-  String title = 'VPC+3-Party';
-  final params = <String, dynamic>{
+  static const String secureSecret = "A3EFDFABA8653DF2342E8DAC29B51AF0";
+  static const virtualPaymentClientURL =
+      'https://mtf.onepay.vn/onecomm-pay/vpc.op';
+  static const title = 'VPC+3-Party';
+
+  static final params = <String, dynamic>{
     'vpc_Merchant': 'ONEPAY',
     'vpc_AccessCode': 'D67342C2',
-    'vpc_MerchTxnRef': '202207250946092046966794',
+    // unique id for a merchant include 24 length string of number
+    'vpc_MerchTxnRef': '',
     'vpc_OrderInfo': 'JSECURETEST01',
     'vpc_Amount': '100',
     'vpc_ReturnURL': 'https://returnonepay.herokuapp.com/',

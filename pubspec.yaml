@@ -36,6 +36,7 @@ dependencies:
   crypto: ^3.0.2
   intl: ^0.17.0
   flutter_inappwebview: ^5.4.3+4
+  convert: ^3.0.2
 
 dev_dependencies:
   flutter_test:

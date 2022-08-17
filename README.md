@@ -14,3 +14,8 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter, view our
 [online documentation](https://flutter.dev/docs), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+# Test acc
+
+Cổng nội địa ngân hàng Vietcombank và điền thông tin : Card number: 9704360000000000002 Card Name: NGUYEN VAN A Issue date: 01-13 OTP: 123456
+Cổng quốc tế: Số thẻ: 5313581000123430 Date Exp: 05/24 CVV/CSC: 123 Street: Tran Quang Khai City/Town: Hanoi State/Province: North Postcode(zip code): 1234 Country: VietNam
